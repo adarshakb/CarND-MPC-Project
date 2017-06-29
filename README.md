@@ -23,8 +23,8 @@ All computations are performed in the vehicle coordinate system.
 
 waypoints are obtained in the frame of the vehicle. A third order polynomial is then fitted to the waypoints. The transformation between coordinate systems is implemented in transformGlobalToLocal. The transformation used is
 
- X' =   cos(psi) * (ptsx[i] - x) + sin(psi) * (ptsy[i] - y);
- Y' =  -sin(psi) * (ptsx[i] - x) + cos(psi) * (ptsy[i] - y);  
+         X' =   cos(psi) * (ptsx[i] - x) + sin(psi) * (ptsy[i] - y);
+         Y' =  -sin(psi) * (ptsx[i] - x) + cos(psi) * (ptsy[i] - y);  
 
 Optimal Control Problem - For every state value provided by the simulator an optimal trajectory for the next N time steps. Specifically values here that lead to smooth driving both for slow (25mph) and fast velocities (70mph).In the receeding horizon problem the cost functio is minimized at each time step, but only the actuations corresponding to the first time step are sent to the simulator. At the next time step the entire optimal control problem is solved again.
 
@@ -32,19 +32,19 @@ Model Predictive Control with Latency - approach the control problem is solved f
 
 This is implemented in MPC::Solve like so.
 
-  // constrain delta to be the previous control for the latency time
-  for (int i = delta_start; i < delta_start + latency_ind; i++) {
-    vars_lowerbound[i] = delta_prev;
-    vars_upperbound[i] = delta_prev;
-  }
-  ... 
-  
-  // constrain a to be the previous control for the latency time 
-  for (int i = a_start; i < a_start+latency_ind; i++) {
-    vars_lowerbound[i] = a_prev;
-    vars_upperbound[i] = a_prev;
-  }
-  ...
+          // constrain delta to be the previous control for the latency time
+          for (int i = delta_start; i < delta_start + latency_ind; i++) {
+            vars_lowerbound[i] = delta_prev;
+            vars_upperbound[i] = delta_prev;
+          }
+          ... 
+          
+          // constrain a to be the previous control for the latency time 
+          for (int i = a_start; i < a_start+latency_ind; i++) {
+            vars_lowerbound[i] = a_prev;
+            vars_upperbound[i] = a_prev;
+          }
+          ...
 
   Timestep Length and Elapsed Duration (N & dt) - Here I chose values of N and dt such that drives the car smoothly around the track for slow velocities of about 25mph all the way up to about 70mph. The values are N=12 and dt=0.05. Note that the 100ms = 2*dt latency imply that the controls of the first two time steps are not used in the optimization. 
 
@@ -52,18 +52,18 @@ This is implemented in MPC::Solve like so.
 
 The cost of a trajectory of length N is computed as follows - 
 
-   Cost  = Sum_i cte(i)^2 
-              + epsi(i)^2 
-              + (v(i)-v_ref)^2 + delta(i)^2 
-              + 10 a(i)^2 
-              + 600 [delta(i+1)-delta(i)] 
-              + [a(i+1)-a(i)]
+         Cost  = Sum_i cte(i)^2 
+                    + epsi(i)^2 
+                    + (v(i)-v_ref)^2 + delta(i)^2 
+                    + 10 a(i)^2 
+                    + 600 [delta(i+1)-delta(i)] 
+                    + [a(i+1)-a(i)]
 
-              
+
 where the increased weight on steering changes between adjacent time intervalls is the most important in order to arrive at smooth trajectories.
 
 
-  // compute the optimal trajectory          
+          // compute the optimal trajectory          
           Solution sol = mpc.Solve(state, coeffs);
 
           double steer_value = sol.Delta.at(latency_ind);
