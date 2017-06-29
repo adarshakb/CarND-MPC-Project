@@ -3,6 +3,72 @@ Self-Driving Car Engineer Nanodegree Program
 
 ---
 
+# Explanation
+Develop a nonlinear model predictive controller (NMPC) to steer a car around a track in a simulator.
+
+Below are the equations of the model
+
+
+      // x_[t+1] = x[t] + v[t] * cos(psi[t]) * dt
+      // y_[t+1] = y[t] + v[t] * sin(psi[t]) * dt
+      // psi_[t+1] = psi[t] + v[t] / Lf * delta[t] * dt
+      // v_[t+1] = v[t] + a[t] * dt
+      // cte[t+1] = f(x[t]) - y[t] + v[t] * sin(epsi[t]) * dt
+      // epsi[t+1] = psi[t] - psides[t] + v[t] * delta[t] / Lf * dt
+
+
+Here, x,y denote the position of the car, psi the heading direction, v its velocity cte the cross-track error and epsi the orientation error. Lf is the distance between the center of mass of the vehicle and the front wheels and affects the maneuverability. The vehicle model can be found in the class FG_eval
+
+All computations are performed in the vehicle coordinate system.
+
+waypoints are obtained in the frame of the vehicle. A third order polynomial is then fitted to the waypoints. The transformation between coordinate systems is implemented in transformGlobalToLocal. The transformation used is
+
+ X' =   cos(psi) * (ptsx[i] - x) + sin(psi) * (ptsy[i] - y);
+ Y' =  -sin(psi) * (ptsx[i] - x) + cos(psi) * (ptsy[i] - y);  
+
+Optimal Control Problem - For every state value provided by the simulator an optimal trajectory for the next N time steps. Specifically values here that lead to smooth driving both for slow (25mph) and fast velocities (70mph).In the receeding horizon problem the cost functio is minimized at each time step, but only the actuations corresponding to the first time step are sent to the simulator. At the next time step the entire optimal control problem is solved again.
+
+Model Predictive Control with Latency - approach the control problem is solved from the current position and time onwards. Latency is taken into account by constraining the controls to the values of the previous iteration for the duration of the latency. Thus the optimal trajectory is computed starting from the time after the latency period. This has the advantage that the dynamics during the latency period is still calculated according to the vehicle model.
+
+This is implemented in MPC::Solve like so.
+
+  // constrain delta to be the previous control for the latency time
+  for (int i = delta_start; i < delta_start + latency_ind; i++) {
+    vars_lowerbound[i] = delta_prev;
+    vars_upperbound[i] = delta_prev;
+  }
+  ... 
+  
+  // constrain a to be the previous control for the latency time 
+  for (int i = a_start; i < a_start+latency_ind; i++) {
+    vars_lowerbound[i] = a_prev;
+    vars_upperbound[i] = a_prev;
+  }
+  ...
+
+  Timestep Length and Elapsed Duration (N & dt) - Here I chose values of N and dt such that drives the car smoothly around the track for slow velocities of about 25mph all the way up to about 70mph. The values are N=12 and dt=0.05. Note that the 100ms = 2*dt latency imply that the controls of the first two time steps are not used in the optimization. 
+
+  Cost Function Parameters
+
+The cost of a trajectory of length N is computed as follows - 
+
+   Cost  = Sum_i cte(i)^2 
+              + epsi(i)^2 
+              + (v(i)-v_ref)^2 + delta(i)^2 
+              + 10 a(i)^2 
+              + 600 [delta(i+1)-delta(i)] 
+              + [a(i+1)-a(i)]
+
+              
+where the increased weight on steering changes between adjacent time intervalls is the most important in order to arrive at smooth trajectories.
+
+
+  // compute the optimal trajectory          
+          Solution sol = mpc.Solve(state, coeffs);
+
+          double steer_value = sol.Delta.at(latency_ind);
+          double throttle_value= sol.A.at(latency_ind);
+
 ## Dependencies
 
 * cmake >= 3.5
